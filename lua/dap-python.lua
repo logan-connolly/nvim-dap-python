@@ -252,6 +252,7 @@ function M.setup(adapter_python_path, opts)
       program = '${file}';
       console = opts.console;
       pythonPath = opts.pythonPath,
+      justMyCode = false
     })
     table.insert(configs, {
       type = 'python';
@@ -264,6 +265,7 @@ function M.setup(adapter_python_path, opts)
       end;
       console = opts.console;
       pythonPath = opts.pythonPath,
+      justMyCode = false
     })
     table.insert(configs, {
       type = 'python';
