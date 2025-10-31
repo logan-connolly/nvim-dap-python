@@ -22,8 +22,6 @@ dependencies = {
 }
 
 test_dependencies = {
-  "nlua",
-  "tree-sitter-python"
 }
 
 source = {
@@ -34,6 +32,5 @@ build = {
    type = 'builtin',
    copy_directories = {
      'doc',
-     'plugin',
    },
 }

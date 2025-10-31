@@ -1,0 +1,19 @@
+---
+when:
+  - event: push
+    branch: main
+  - event: pull_request
+
+matrix:
+  nvim_version:
+    - latest
+    - 0.11
+
+steps:
+  - name: test
+    image: codeberg.org/mfussenegger/nvimdev:${nvim_version}
+    commands:
+      - apk add python3 tree-sitter-python
+      - mkdir -p ~/.config/nvim/parser
+      - cp /usr/lib/tree-sitter/python.so ~/.config/nvim/parser/python.so
+      - luarocks-5.1 test

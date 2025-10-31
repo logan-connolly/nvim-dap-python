@@ -1,5 +1,5 @@
+*dap-python*                                     Python extension for nvim-dap
 ==============================================================================
-Python extension for nvim-dap                                       *dap-python*
 
 M.test_runner                                           *dap-python.test_runner*
      Test runner to use by default.
@@ -96,6 +96,7 @@ dap-python.LaunchConfig : dap-python.Config
         {cwd}          (string|nil)          Absolute path to the working directory of the program being debugged.
         {env}          (table|nil)           Environment variables defined as key value pair
         {stopOnEntry}  (boolean|nil)         Stop at first line of user code.
+        {envFile}      (string|nil)          Path to file with environment variables: Processed by nvim-dap-python and included in `env` when sent to debugpy
 
 
 dap-python.debug_opts                                    *dap-python.debug_opts*

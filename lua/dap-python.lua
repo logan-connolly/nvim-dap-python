@@ -124,12 +124,37 @@ local get_python_path = function()
 end
 
 
+---@param path string
+---@return table<string, any>?
+local function parse_envfile(path)
+  local f = io.open(path, "r")
+  if not f then
+    return nil
+  end
+  local env = vim.empty_dict()
+  for line in f:lines() do
+    local key, value = line:match("^([^=]+)=(.+)")
+    if key and value and key:sub(1, 1) ~= '#' then
+      env[key] = value:gsub("^'(.*)'$", "%1"):gsub('^"(.*)"$', "%1")
+    end
+  end
+  f:close()
+  return env
+end
+
+
 ---@param config dap-python.Config|dap-python.LaunchConfig
 ---@param on_config fun(config: dap-python.Config)
 local enrich_config = function(config, on_config)
   if not config.pythonPath and not config.python then
     ---@diagnostic disable-next-line: inject-field
     config.pythonPath = get_python_path()
+  end
+  local envfile = vim.fn.fnamemodify(config.envFile or "./.env", ":p")
+  config.envFile = nil
+  local env = parse_envfile(envfile)
+  if env then
+    config.env = vim.tbl_deep_extend('force', config.env or vim.empty_dict(), env)
   end
   on_config(config)
 end
@@ -208,7 +233,7 @@ end
 
 --- Register the python debug adapter
 ---
----@param python_path "python"|"python3"|"uv"|string|nil Path to python interpreter. Must be in $PATH or an absolute path and needs to have the debugpy package installed. Defaults to `python3`.
+---@param python_path "python"|"python3"|"uv"|"debugpy-adapter"|string|nil Path to python interpreter. Must be in $PATH or an absolute path and needs to have the debugpy package installed. Defaults to `python3`.
 --- If `uv` then debugpy is launched via `uv run`
 ---@param opts? dap-python.setup.opts See |dap-python.setup.opts|
 function M.setup(python_path, opts)
@@ -236,11 +261,22 @@ function M.setup(python_path, opts)
     else
       ---@type dap.ExecutableAdapter
       local adapter
-      if python_path == "uv" then
+      local basename = vim.fn.fnamemodify(python_path, ":t")
+      if basename == "uv" then
         adapter = {
           type = "executable",
-          command = "uv",
+          command = python_path,
           args = {"run", "--with", "debugpy", "python", "-m", "debugpy.adapter"},
+          enrich_config = enrich_config,
+          options = {
+            source_filetype = "python"
+          }
+        }
+      elseif basename == "debugpy-adapter" then
+        adapter = {
+          type = "executable",
+          command = python_path,
+          args = {},
           enrich_config = enrich_config,
           options = {
             source_filetype = "python"
@@ -447,7 +483,16 @@ local function trigger_test(classnames, methodname, opts)
     args = args,
     console = opts.console
   }
-  load_dap().run(vim.tbl_extend('force', config, opts.config or {}))
+  local opts_config = opts.config or {}
+  if type(opts_config) == "function" then
+    config = opts_config(config)
+  elseif type(opts_config) == "table" then
+    config = vim.tbl_extend("force", config, opts_config)
+  else
+    error("opts.config must be a table, got: " .. type(opts_config))
+  end
+  ---@cast config dap.Configuration
+  load_dap().run(config)
 end
 
 
@@ -568,12 +613,13 @@ end
 ---@field cwd string|nil Absolute path to the working directory of the program being debugged.
 ---@field env table|nil Environment variables defined as key value pair
 ---@field stopOnEntry boolean|nil Stop at first line of user code.
+---@field envFile string|nil Path to file with environment variables: Processed by nvim-dap-python and included in `env` when sent to debugpy
 
 
 ---@class dap-python.debug_opts
 ---@field console? dap-python.console
 ---@field test_runner? "unittest"|"pytest"|"django"|string name of the test runner
----@field config? dap-python.Config Overrides for the configuration
+---@field config? dap-python.Config|fun(config:dap-python.Config):dap-python.Config Overrides for the configuration
 
 ---@class dap-python.setup.opts
 ---@field include_configs? boolean Add default configurations
